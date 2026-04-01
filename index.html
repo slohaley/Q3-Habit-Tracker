@@ -68,7 +68,7 @@
     .user-toggle { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
     .toggle-label { font-size: 13px; color: var(--text-secondary); }
     .user-btn { padding: 6px 16px; border-radius: 99px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; font-weight: 500; background: transparent; color: var(--text-secondary); font-family: var(--font); transition: all 0.15s; }
-    .user-btn.active-you { background: var(--purple-50); color: var(--purple-800); border-color: var(--purple-600); }
+    .user-btn.active-you { background: #facccc33; color: #7a2a2a; border-color: #e08080; }
     .user-btn.active-them { background: #cc000015; color: #CC0000; border-color: #CC0000; }
  
     .date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
@@ -117,16 +117,22 @@
     .cal-wrap { margin-bottom: 24px; }
     .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
     .cal-day-hdr { font-size: 11px; text-align: center; color: var(--text-tertiary); padding: 2px 0; font-weight: 500; }
-    .cal-cell { aspect-ratio: 1; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid var(--border); cursor: pointer; transition: all 0.1s; font-weight: 500; }
+    .cal-cell { aspect-ratio: 1; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid var(--border); cursor: pointer; transition: all 0.1s; font-weight: 500; position: relative; overflow: hidden; }
     .cal-cell:hover { background: var(--bg-tertiary); }
     .cal-cell.future { color: var(--text-tertiary); cursor: default; border-color: transparent; background: transparent; }
     .cal-cell.empty { border: none; cursor: default; }
-    .cal-cell.done-you { background: #facccc; border-color: #e08080; color: #7a2a2a; }
-    .cal-cell.partial-you { background: #FFE8E8; border-color: #f0b8b8; color: #9a5050; }
+    .cal-cell .cal-num { position: relative; z-index: 1; line-height: 1; }
+    .cal-cell .cal-star { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -60%); font-size: 16px; color: white; z-index: 2; line-height: 1; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+    .cal-cell.done-you .cal-num { position: absolute; bottom: 3px; left: 0; width: 100%; text-align: center; font-size: 10px; }
+    .cal-cell.done-them .cal-num { position: absolute; bottom: 3px; left: 0; width: 100%; text-align: center; font-size: 10px; color: #fff; }
+    .cal-cell.done-you { border-color: #e08080; color: #7a2a2a; background: #facccc; }
+    .cal-cell.partial-you { border-color: #e08080; color: #7a2a2a; background: transparent; }
     .cal-cell.done-them { background: #CC0000; border-color: #990000; color: #fff; }
-    .cal-cell.partial-them { background: #CB9F5B; border-color: #a07a3a; color: #fff; }
+    .cal-cell.partial-them { border-color: #990000; color: var(--text); background: transparent; }
+    .cal-cell-fill { position: absolute; bottom: 0; left: 0; width: 100%; z-index: 0; pointer-events: none; }
     .cal-cell.today-cell { border-width: 2px; border-color: #e08080; }
     .cal-cell.today-cell.done-them { border-color: #CC0000; }
+    .cal-cell.today-cell.partial-them { border-color: #CC0000; }
     .cal-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11px; color: var(--text-secondary); flex-wrap: wrap; }
     .cal-legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 4px; vertical-align: middle; }
  
@@ -188,7 +194,7 @@ const STORAGE_KEY = 'q3_habit_tracker_v1';
 const YOU_HABITS = [
   { id: 'steps',  label: 'Walk 8,000 steps',    meta: 'Daily goal',  weekly: false },
   { id: 'read',   label: 'Read for 10 minutes',  meta: 'Daily goal',  weekly: false },
-  { id: 'tiktok', label: 'Post 5 TikToks',        meta: '5× per week', weekly: true  },
+  { id: 'tiktok', label: 'Post on TikTok', meta: 'Daily goal — 5 days in-feed, 2 days on story', weekly: false },
 ];
 const THEM_HABITS = [
   { id: 'th1', label: 'Habit 1 (placeholder)', meta: 'Daily goal',  weekly: false },
@@ -443,13 +449,25 @@ function renderCalendar() {
       const isFuture = ds > today;
       const isToday2 = ds === today;
       let classes = ['cal-cell'];
-      if (isFuture) { classes.push('future'); }
-      else if (poss > 0 && done === poss) { classes.push('done-' + cls); }
-      else if (poss > 0 && done > 0 && cls === 'you') { classes.push('partial-you'); }
-      else if (poss > 0 && done > 0 && cls === 'them') { classes.push('partial-them'); }
+      const fillColor = cls === 'you' ? '#facccc' : '#CC0000';
+      if (isFuture) {
+        classes.push('future');
+      } else if (poss > 0 && done === poss) {
+        classes.push('done-' + cls);
+      } else if (poss > 0 && done > 0) {
+        classes.push('partial-' + cls);
+      }
       if (isToday2) classes.push('today-cell');
       cell.className = classes.join(' ');
-      cell.textContent = day;
+      let fillHtml = '';
+      if (!isFuture && poss > 0 && done > 0 && done < poss) {
+        const pct = Math.round((done / poss) * 100);
+        fillHtml = `<div class="cal-cell-fill" style="height:${pct}%;background:${fillColor};"></div>`;
+      }
+      const starHtml = (!isFuture && poss > 0 && done === poss)
+        ? `<span class="cal-star">&#9733;</span>`
+        : '';
+      cell.innerHTML = `${fillHtml}${starHtml}<span class="cal-num">${day}</span>`;
       if (!isFuture) {
         cell.onclick = () => {
           currentDay = ds;
@@ -467,11 +485,12 @@ function renderCalendar() {
     const dotStyle = cls === 'you'
       ? 'background:#facccc;border:1px solid #e08080;'
       : 'background:#CC0000;border:1px solid #990000;';
-    const partialDotStyle = cls === 'you'
-      ? 'background:#FFE8E8;border:1px solid #f0b8b8;'
-      : 'background:#CB9F5B;border:1px solid #a07a3a;';
+    const partialColor = cls === 'you' ? '#facccc' : '#CC0000';
+    const partialBorder = cls === 'you' ? '#e08080' : '#990000';
+    const partialPct = cls === 'you' ? '50' : '33';
+    const partialDot = `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;border:1px solid ${partialBorder};overflow:hidden;vertical-align:middle;margin-right:4px;position:relative;background:transparent;"><span style="position:absolute;bottom:0;left:0;width:100%;height:${partialPct}%;background:${partialColor};"></span></span>`;
     legend.innerHTML = `<span><span class="cal-legend-dot" style="${dotStyle}"></span>All done</span>
-      <span><span class="cal-legend-dot" style="${partialDotStyle}"></span>Partial</span>
+      <span>${partialDot}Partial</span>
       <span><span class="cal-legend-dot" style="background:var(--bg-secondary);border:1px solid var(--border);"></span>None</span>`;
     wrap.appendChild(legend);
     container.appendChild(wrap);
