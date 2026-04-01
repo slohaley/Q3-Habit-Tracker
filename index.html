@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Q3 Habit Tracker</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f5f5f3;
+      --bg-tertiary: #eeede9;
+      --text: #1a1a1a;
+      --text-secondary: #6b6b6b;
+      --text-tertiary: #a0a0a0;
+      --border: rgba(0,0,0,0.12);
+      --border-strong: rgba(0,0,0,0.25);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --purple-50: #EEEDFE;
+      --purple-100: #CECBF6;
+      --purple-600: #534AB7;
+      --purple-800: #3C3489;
+      --teal-50: #E1F5EE;
+      --teal-100: #9FE1CB;
+      --teal-600: #0F6E56;
+      --teal-800: #085041;
+      --font: 'DM Sans', system-ui, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1a1a1a;
+        --bg-secondary: #242424;
+        --bg-tertiary: #2e2e2e;
+        --text: #f0f0f0;
+        --text-secondary: #a0a0a0;
+        --text-tertiary: #666;
+        --border: rgba(255,255,255,0.12);
+        --border-strong: rgba(255,255,255,0.25);
+        --purple-50: #26215C;
+        --purple-100: #3C3489;
+        --purple-600: #AFA9EC;
+        --purple-800: #CECBF6;
+        --teal-50: #04342C;
+        --teal-100: #085041;
+        --teal-600: #5DCAA5;
+        --teal-800: #9FE1CB;
+      }
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+    .app { max-width: 480px; margin: 0 auto; padding: 24px 16px 80px; }
+
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
+
+    .tab-bar { display: flex; gap: 6px; margin-bottom: 24px; background: var(--bg-secondary); border-radius: var(--radius-xl); padding: 4px; }
+    .tab { flex: 1; padding: 8px; border-radius: calc(var(--radius-xl) - 4px); border: none; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-secondary); font-family: var(--font); transition: all 0.15s; }
+    .tab.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    .user-toggle { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+    .toggle-label { font-size: 13px; color: var(--text-secondary); }
+    .user-btn { padding: 6px 16px; border-radius: 99px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; font-weight: 500; background: transparent; color: var(--text-secondary); font-family: var(--font); transition: all 0.15s; }
+    .user-btn.active-you { background: var(--purple-50); color: var(--purple-800); border-color: var(--purple-600); }
+    .user-btn.active-them { background: var(--teal-50); color: var(--teal-800); border-color: var(--teal-600); }
+
+    .date-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .date-nav button { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 6px 14px; cursor: pointer; font-size: 14px; color: var(--text-secondary); font-family: var(--font); transition: background 0.1s; }
+    .date-nav button:hover { background: var(--bg-tertiary); }
+    .date-label { font-size: 15px; font-weight: 500; flex: 1; }
+
+    .habits-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .habit-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); cursor: pointer; transition: all 0.15s; user-select: none; }
+    .habit-row:hover { background: var(--bg-secondary); }
+    .habit-row.checked-you { background: var(--purple-50); border-color: var(--purple-600); }
+    .habit-row.checked-them { background: var(--teal-50); border-color: var(--teal-600); }
+    .habit-check { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; font-weight: 600; transition: all 0.15s; }
+    .checked-you .habit-check { background: var(--purple-600); border-color: var(--purple-600); color: #fff; }
+    .checked-them .habit-check { background: var(--teal-600); border-color: var(--teal-600); color: #fff; }
+    .habit-label { font-size: 14px; font-weight: 500; }
+    .habit-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .weekly-note { font-size: 12px; color: var(--text-tertiary); font-style: italic; padding: 3px 0 0 50px; }
+    .hint { font-size: 12px; color: var(--text-tertiary); padding: 4px 0; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px 12px; }
+    .stat-val { font-size: 24px; font-weight: 600; }
+    .stat-lbl { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .you-val { color: var(--purple-800); }
+    .them-val { color: var(--teal-800); }
+
+    .section-title { font-size: 11px; font-weight: 600; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+
+    .leaderboard { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .lb-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 10px 16px; background: var(--bg-secondary); font-size: 11px; color: var(--text-tertiary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+    .lb-row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; padding: 16px; align-items: center; border-bottom: 1px solid var(--border); }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-name { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .lb-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .you-dot { background: var(--purple-600); }
+    .them-dot { background: var(--teal-600); }
+    .lb-num { font-size: 15px; font-weight: 600; }
+    .lb-pct { font-size: 13px; color: var(--text-secondary); }
+    .crown { font-size: 16px; }
+    .lb-footer { font-size: 12px; color: var(--text-tertiary); margin-top: 12px; text-align: center; }
+
+    .cal-wrap { margin-bottom: 24px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-day-hdr { font-size: 11px; text-align: center; color: var(--text-tertiary); padding: 2px 0; font-weight: 500; }
+    .cal-cell { aspect-ratio: 1; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 12px; border: 1px solid var(--border); cursor: pointer; transition: all 0.1s; font-weight: 500; }
+    .cal-cell:hover { background: var(--bg-tertiary); }
+    .cal-cell.future { color: var(--text-tertiary); cursor: default; border-color: transparent; background: transparent; }
+    .cal-cell.empty { border: none; cursor: default; }
+    .cal-cell.done-you { background: var(--purple-50); border-color: var(--purple-600); color: var(--purple-800); }
+    .cal-cell.done-them { background: var(--teal-50); border-color: var(--teal-600); color: var(--teal-800); }
+    .cal-cell.today-cell { border-width: 2px; border-color: var(--purple-600); }
+    .cal-cell.today-cell.done-them { border-color: var(--teal-600); }
+    .cal-legend { display: flex; gap: 14px; margin-top: 8px; font-size: 11px; color: var(--text-secondary); flex-wrap: wrap; }
+    .cal-legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>Q3 Habit Tracker</h1>
+  <p class="subtitle">April 1 – June 30, 2026</p>
+
+  <div class="tab-bar">
+    <button class="tab active" onclick="showPage('track')">Track</button>
+    <button class="tab" onclick="showPage('board')">Leaderboard</button>
+    <button class="tab" onclick="showPage('cal')">Calendar</button>
+  </div>
+
+  <!-- TRACK -->
+  <div id="page-track" class="page active">
+    <div class="user-toggle">
+      <span class="toggle-label">Logging as:</span>
+      <button class="user-btn active-you" id="btn-you" onclick="setUser('you')">Haley</button>
+      <button class="user-btn" id="btn-them" onclick="setUser('them')">Zebby</button>
+    </div>
+    <div class="date-nav">
+      <button onclick="changeDay(-1)">&#8592;</button>
+      <div class="date-label" id="date-label"></div>
+      <button onclick="changeDay(1)">&#8594;</button>
+    </div>
+    <div id="habits-container" class="habits-list"></div>
+    <p class="hint">Click a habit to toggle it complete for this day.</p>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="page-board" class="page">
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="section-title">Q3 standings</div>
+    <div class="leaderboard" id="leaderboard"></div>
+    <p class="lb-footer">Q3: April 1 – June 30, 2026 &nbsp;·&nbsp; 91 days total</p>
+  </div>
+
+  <!-- CALENDAR -->
+  <div id="page-cal" class="page">
+    <div class="user-toggle" style="margin-bottom:14px;">
+      <span class="toggle-label">View:</span>
+      <button class="user-btn active-you" id="cal-btn-you" onclick="setCalUser('you')">Haley</button>
+      <button class="user-btn" id="cal-btn-them" onclick="setCalUser('them')">Zebby</button>
+    </div>
+    <div id="calendar-container"></div>
+  </div>
+</div>
+
+<script>
+const Q3_START = '2026-04-01';
+const Q3_END   = '2026-06-30';
+const STORAGE_KEY = 'q3_habit_tracker_v1';
+
+const YOU_HABITS = [
+  { id: 'steps',  label: 'Walk 8,000 steps',    meta: 'Daily goal',  weekly: false },
+  { id: 'read',   label: 'Read for 10 minutes',  meta: 'Daily goal',  weekly: false },
+  { id: 'tiktok', label: 'Post 5 TikToks',        meta: '5× per week', weekly: true  },
+];
+const THEM_HABITS = [
+  { id: 'th1', label: 'Habit 1 (placeholder)', meta: 'Daily goal',  weekly: false },
+  { id: 'th2', label: 'Habit 2 (placeholder)', meta: 'Daily goal',  weekly: false },
+  { id: 'th3', label: 'Habit 3 (placeholder)', meta: 'Daily goal',  weekly: false },
+];
+
+let currentUser = 'you';
+let calUser = 'you';
+const today = dayjs().format('YYYY-MM-DD');
+let currentDay = today < Q3_START ? Q3_START : today > Q3_END ? Q3_END : today;
+let data = { you: {}, them: {} };
+
+function saveData() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+}
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) data = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function isChecked(userId, date, habitId) {
+  return !!(data[userId][date] && data[userId][date][habitId]);
+}
+
+function toggle(userId, date, habitId) {
+  if (!data[userId][date]) data[userId][date] = {};
+  data[userId][date][habitId] = !data[userId][date][habitId];
+  saveData();
+  renderHabits();
+  if (document.getElementById('page-board').classList.contains('active')) renderLeaderboard();
+  if (document.getElementById('page-cal').classList.contains('active')) renderCalendar();
+}
+
+function weekOf(date) {
+  const d = dayjs(date);
+  return d.subtract(d.day(), 'day').format('YYYY-MM-DD');
+}
+
+function weeklyCount(userId, date, habitId) {
+  const week = weekOf(date);
+  let count = 0;
+  for (let i = 0; i < 7; i++) {
+    const d = dayjs(week).add(i, 'day').format('YYYY-MM-DD');
+    if (d >= Q3_START && d <= Q3_END && isChecked(userId, d, habitId)) count++;
+  }
+  return count;
+}
+
+function isWeeklyDone(userId, date, habitId) {
+  return weeklyCount(userId, date, habitId) >= 5;
+}
+
+function renderHabits() {
+  const habits = currentUser === 'you' ? YOU_HABITS : THEM_HABITS;
+  const cls = currentUser === 'you' ? 'checked-you' : 'checked-them';
+  const container = document.getElementById('habits-container');
+  container.innerHTML = '';
+  habits.forEach(h => {
+    const checked = h.weekly ? isWeeklyDone(currentUser, currentDay, h.id) : isChecked(currentUser, currentDay, h.id);
+    const row = document.createElement('div');
+    row.className = 'habit-row' + (checked ? ' ' + cls : '');
+    row.innerHTML = `<div class="habit-check">${checked ? '&#10003;' : ''}</div>
+      <div><div class="habit-label">${h.label}</div><div class="habit-meta">${h.meta}</div></div>`;
+    row.onclick = () => toggle(currentUser, currentDay, h.id);
+    container.appendChild(row);
+    if (h.weekly) {
+      const note = document.createElement('div');
+      note.className = 'weekly-note';
+      note.textContent = 'This week: ' + weeklyCount(currentUser, currentDay, h.id) + '/5 posted';
+      container.appendChild(note);
+    }
+  });
+}
+
+function setUser(u) {
+  currentUser = u;
+  document.getElementById('btn-you').className = 'user-btn' + (u === 'you' ? ' active-you' : '');
+  document.getElementById('btn-them').className = 'user-btn' + (u === 'them' ? ' active-them' : '');
+  renderHabits();
+}
+
+function setCalUser(u) {
+  calUser = u;
+  document.getElementById('cal-btn-you').className = 'user-btn' + (u === 'you' ? ' active-you' : '');
+  document.getElementById('cal-btn-them').className = 'user-btn' + (u === 'them' ? ' active-them' : '');
+  renderCalendar();
+}
+
+function changeDay(n) {
+  let d = dayjs(currentDay).add(n, 'day').format('YYYY-MM-DD');
+  if (d < Q3_START) d = Q3_START;
+  if (d > Q3_END) d = Q3_END;
+  currentDay = d;
+  document.getElementById('date-label').textContent = formatDate(currentDay);
+  renderHabits();
+}
+
+function formatDate(d) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const obj = dayjs(d);
+  return days[obj.day()] + ', ' + months[obj.month()] + ' ' + obj.date() + (d === today ? ' (today)' : '');
+}
+
+function calcScore(userId) {
+  const habits = userId === 'you' ? YOU_HABITS : THEM_HABITS;
+  const dailyHabits = habits.filter(h => !h.weekly);
+  const weeklyHabits = habits.filter(h => h.weekly);
+  let total = 0, possible = 0;
+  let d = dayjs(Q3_START);
+  const end = dayjs(today < Q3_END ? today : Q3_END);
+  while (!d.isAfter(end)) {
+    const ds = d.format('YYYY-MM-DD');
+    dailyHabits.forEach(h => { possible++; if (isChecked(userId, ds, h.id)) total++; });
+    d = d.add(1, 'day');
+  }
+  const weeksSet = new Set();
+  let wd = dayjs(Q3_START);
+  while (!wd.isAfter(end)) { weeksSet.add(weekOf(wd.format('YYYY-MM-DD'))); wd = wd.add(1, 'day'); }
+  weeklyHabits.forEach(h => {
+    weeksSet.forEach(w => {
+      possible += 5;
+      total += weeklyCount(userId, dayjs(w).add(1,'day').format('YYYY-MM-DD'), h.id);
+    });
+  });
+  return { total, possible, pct: possible ? Math.round(total / possible * 100) : 0 };
+}
+
+function renderLeaderboard() {
+  const ys = calcScore('you'), ts = calcScore('them');
+  const youWin = ys.total >= ts.total;
+  const diff = ys.total - ts.total;
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-val you-val">${ys.total}</div><div class="stat-lbl">Haley's completions</div></div>
+    <div class="stat-card"><div class="stat-val them-val">${ts.total}</div><div class="stat-lbl">Zebby's completions</div></div>
+    <div class="stat-card"><div class="stat-val">${diff > 0 ? '+' + diff : diff}</div><div class="stat-lbl">Haley's lead</div></div>`;
+  document.getElementById('leaderboard').innerHTML = `
+    <div class="lb-header"><div>Competitor</div><div>Done</div><div>Possible</div><div>%</div></div>
+    <div class="lb-row">
+      <div class="lb-name"><span class="lb-dot you-dot"></span>Haley ${youWin ? '<span class="crown">&#128081;</span>' : ''}</div>
+      <div class="lb-num">${ys.total}</div><div class="lb-pct">${ys.possible}</div>
+      <div class="lb-pct" style="color:var(--purple-800);font-weight:600">${ys.pct}%</div>
+    </div>
+    <div class="lb-row">
+      <div class="lb-name"><span class="lb-dot them-dot"></span>Zebby ${!youWin ? '<span class="crown">&#128081;</span>' : ''}</div>
+      <div class="lb-num">${ts.total}</div><div class="lb-pct">${ts.possible}</div>
+      <div class="lb-pct" style="color:var(--teal-800);font-weight:600">${ts.pct}%</div>
+    </div>`;
+}
+
+function renderCalendar() {
+  const userId = calUser;
+  const cls = userId === 'you' ? 'you' : 'them';
+  const habits = userId === 'you' ? YOU_HABITS : THEM_HABITS;
+  const months = [
+    { name: 'April', year: 2026, start: '2026-04-01', days: 30 },
+    { name: 'May',   year: 2026, start: '2026-05-01', days: 31 },
+    { name: 'June',  year: 2026, start: '2026-06-01', days: 30 },
+  ];
+  const container = document.getElementById('calendar-container');
+  container.innerHTML = '';
+  months.forEach(m => {
+    const wrap = document.createElement('div');
+    wrap.className = 'cal-wrap';
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.textContent = m.name + ' 2026';
+    wrap.appendChild(title);
+    const grid = document.createElement('div');
+    grid.className = 'cal-grid';
+    ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d => {
+      const hd = document.createElement('div');
+      hd.className = 'cal-day-hdr';
+      hd.textContent = d;
+      grid.appendChild(hd);
+    });
+    const firstDay = dayjs(m.start).day();
+    for (let i = 0; i < firstDay; i++) {
+      const blank = document.createElement('div');
+      blank.className = 'cal-cell empty';
+      grid.appendChild(blank);
+    }
+    for (let day = 1; day <= m.days; day++) {
+      const ds = m.start.slice(0,7) + '-' + String(day).padStart(2,'0');
+      const cell = document.createElement('div');
+      const dailyHabits = habits.filter(h => !h.weekly);
+      const done = dailyHabits.filter(h => isChecked(userId, ds, h.id)).length;
+      const poss = dailyHabits.length;
+      const isFuture = ds > today;
+      const isToday2 = ds === today;
+      let classes = ['cal-cell'];
+      if (isFuture) { classes.push('future'); }
+      else if (poss > 0 && done === poss) { classes.push('done-' + cls); }
+      if (isToday2) classes.push('today-cell');
+      cell.className = classes.join(' ');
+      cell.textContent = day;
+      if (!isFuture) {
+        cell.onclick = () => {
+          currentDay = ds;
+          setUser(userId);
+          showPage('track');
+          document.getElementById('date-label').textContent = formatDate(currentDay);
+          renderHabits();
+        };
+      }
+      grid.appendChild(cell);
+    }
+    wrap.appendChild(grid);
+    const legend = document.createElement('div');
+    legend.className = 'cal-legend';
+    const dotStyle = cls === 'you'
+      ? 'background:var(--purple-50);border:1px solid var(--purple-600);'
+      : 'background:var(--teal-50);border:1px solid var(--teal-600);';
+    legend.innerHTML = `<span><span class="cal-legend-dot" style="${dotStyle}"></span>All daily habits done</span>
+      <span><span class="cal-legend-dot" style="background:var(--bg-secondary);border:1px solid var(--border);"></span>Partial / none</span>`;
+    wrap.appendChild(legend);
+    container.appendChild(wrap);
+  });
+}
+
+function showPage(p) {
+  ['track','board','cal'].forEach(id => {
+    document.getElementById('page-' + id).classList.toggle('active', id === p);
+  });
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    t.classList.toggle('active', ['track','board','cal'][i] === p);
+  });
+  if (p === 'board') renderLeaderboard();
+  if (p === 'cal') renderCalendar();
+}
+
+loadData();
+document.getElementById('date-label').textContent = formatDate(currentDay);
+renderHabits();
+</script>
+</body>
+</html>
