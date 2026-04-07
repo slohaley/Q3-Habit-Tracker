@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Q3 Habit Tracker</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/dayjs/1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-app-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/firebase@9.23.0/firebase-database-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
  
@@ -189,7 +191,6 @@
 <script>
 const Q3_START = '2026-04-01';
 const Q3_END   = '2026-06-30';
-const STORAGE_KEY = 'q3_habit_tracker_v1';
  
 const YOU_HABITS = [
   { id: 'steps',  label: 'Walk 8,000 steps',    meta: 'Daily goal',  weekly: false },
@@ -208,14 +209,37 @@ const today = dayjs().format('YYYY-MM-DD');
 let currentDay = today < Q3_START ? Q3_START : today > Q3_END ? Q3_END : today;
 let data = { you: {}, them: {} };
  
+const firebaseConfig = {
+  apiKey: "AIzaSyCMgA_1SetecIPXifculnB8zC5nblvL4ao",
+  authDomain: "q3-habit-tracker-database.firebaseapp.com",
+  databaseURL: "https://q3-habit-tracker-database-default-rtdb.firebaseio.com",
+  projectId: "q3-habit-tracker-database",
+  storageBucket: "q3-habit-tracker-database.firebasestorage.app",
+  messagingSenderId: "522341894481",
+  appId: "1:522341894481:web:f46ef34b59c73cf6286b70"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref('habitData');
+ 
 function saveData() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) {}
+  dataRef.set(data);
 }
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) data = JSON.parse(raw);
-  } catch(e) {}
+ 
+function initFirebase() {
+  dataRef.on('value', snapshot => {
+    const val = snapshot.val();
+    if (val) {
+      data.you = val.you || {};
+      data.them = val.them || {};
+    } else {
+      data = { you: {}, them: {} };
+    }
+    document.getElementById('date-label').textContent = formatDate(currentDay);
+    renderHabits();
+    if (document.getElementById('page-board').classList.contains('active')) renderLeaderboard();
+    if (document.getElementById('page-cal').classList.contains('active')) renderCalendar();
+  });
 }
  
 function isChecked(userId, date, habitId) {
@@ -276,10 +300,12 @@ function launchConfetti(userId) {
 }
  
 function toggle(userId, date, habitId) {
+  if (!data[userId]) data[userId] = {};
   if (!data[userId][date]) data[userId][date] = {};
-  const wasChecked = data[userId][date][habitId];
-  data[userId][date][habitId] = !wasChecked;
-  saveData();
+  const wasChecked = !!data[userId][date][habitId];
+  const newVal = !wasChecked;
+  data[userId][date][habitId] = newVal;
+  db.ref(`habitData/${userId}/${date}/${habitId}`).set(newVal);
   renderHabits();
   if (!wasChecked) launchConfetti(userId);
   if (document.getElementById('page-board').classList.contains('active')) renderLeaderboard();
@@ -508,9 +534,7 @@ function showPage(p) {
   if (p === 'cal') renderCalendar();
 }
  
-loadData();
-document.getElementById('date-label').textContent = formatDate(currentDay);
-renderHabits();
+initFirebase();
 </script>
 </body>
 </html>
